@@ -1,0 +1,194 @@
+# OVOS GUI — Page Template Design
+
+## Philosophy
+
+A template defines **what kind of information** is being presented, not how it looks.
+The display layer (Qt/web/terminal/etc.) owns all rendering decisions.
+Skills own only the semantic data they provide.
+
+### Voice-first constraint
+
+OVOS is a voice-first platform.  The GUI is a *companion* to speech, not a
+replacement for it.
+
+- **Touch is a shortcut, never the only path.**  Every interaction a user can
+  perform by touch must also be completable by voice.
+- **Some clients are display-only** (no touch, no keyboard).  Templates must
+  never assume input capability.
+- **Skills must never block on a GUI event.**  If a skill asks a question, it
+  listens for the spoken answer simultaneously.  A GUI touch shortcut just
+  fires the same bus message the spoken answer would.
+
+A template should be added when:
+- The semantic structure is meaningfully distinct from existing templates, **and**
+- It is needed by more than one unrelated skill (no single-skill templates), **or**
+- It is an essential skill (weather, clock)
+
+A template should be rejected when:
+- It is a visual variation of an existing template (that is the display layer's job)
+- It can be composed from existing templates in sequence
+- Its data model is a strict subset of a broader template
+
+---
+
+## Proposed Template Set
+
+### System group — managed by ovos-gui, not skills
+
+| Template | Purpose | Key session data |
+|---|---|---|
+| `SYSTEM_idle` | Resting / ambient screen | *(none — display layer decides)* |
+| `SYSTEM_loading` | Indeterminate progress | `label: str` |
+| `SYSTEM_status` | Terminal success / failure | `success: bool`, `label: str` |
+| `SYSTEM_error` | Error with optional detail | `label: str`, `detail: str?` |
+
+`SYSTEM_idle` is **reserved** — skills must not display it directly.
+
+---
+
+### Content group — read-only information
+
+| Template | Purpose | Key session data |
+|---|---|---|
+| `SYSTEM_text` | Long-form text, auto-paginated | `text: str`, `title: str?` |
+| `SYSTEM_image` | Static image | `image: url`, `title: str?`, `caption: str?`, `fill: FillMode?`, `background_color: str?` |
+| `SYSTEM_animated_image` | Animated image (GIF / WebP) | same as `SYSTEM_image` |
+| `SYSTEM_list` | Scrollable list of labelled items | `items: List[{title, subtitle?, image?}]`, `title: str?` |
+| `SYSTEM_grid` | 2-D tile grid of image-primary items | `items: List[{image, title?}]`, `title: str?` |
+| `SYSTEM_table` | Columnar data table with named headers | `columns: List[str]`, `rows: List[List[Any]]`, `title: str?` |
+| `SYSTEM_html` | Rendered HTML string | `html: str`, `resource_url: str?` |
+| `SYSTEM_url` | Full web page | `url: str` |
+
+**Why three distinct collection templates?**
+
+The data models are semantically different, not just visually different:
+
+| | Primary axis | Item structure | Layout authority |
+|---|---|---|---|
+| `list` | Reading order | Hierarchical — title + subtitle + thumbnail | Fixed: single column |
+| `grid` | Visual equality | Image-primary — image required, title optional | Display layer (adapts to screen) |
+| `table` | Column identity | Relational — named columns, typed rows | Fixed: column × row |
+
+Merging them would force every display layer to infer intent from data shape,
+which is fragile.  Keeping them separate makes the skill's intent explicit.
+
+---
+
+### Media group — time-based playback
+
+| Template | Purpose | Key session data |
+|---|---|---|
+| `SYSTEM_audio_player` | Now-playing card (audio) | `title: str`, `artist: str?`, `album: str?`, `image: url?`, `position: float`, `duration: float`, `playing: bool` |
+| `SYSTEM_video_player` | In-GUI video playback | `uri: str`, `title: str?`, `playing: bool` |
+
+**Why separate audio and video?**
+Audio playback shows a rich *metadata card* while the actual audio plays through
+the sound system — there is no video stream involved.  Video playback is a raw
+media surface.  Conflating them forces every display layer to handle both cases
+in one template.
+
+---
+
+### Utility group — common single-purpose views
+
+| Template | Purpose | Key session data |
+|---|---|---|
+| `SYSTEM_clock` | Current time display | *(self-updating, no data needed)* |
+| `SYSTEM_timer` | Countdown / count-up display | `duration: int` (seconds), `label: str?` |
+| `SYSTEM_weather` | Weather summary card | `current_temp`, `min_temp`, `max_temp`, `condition: str`, `icon: url?`, `location: str?` |
+| `SYSTEM_map` | Geographic location | `latitude: float`, `longitude: float`, `zoom: int?`, `label: str?` |
+
+**Why `SYSTEM_timer`?**
+Timers are pervasive (cooking, pomodoro, alarms) and have a distinct real-time
+countdown UI that cannot be expressed by `SYSTEM_text` without the skill
+manually updating the displayed string every second.
+
+**Why `SYSTEM_map`?**
+Navigation, weather location, business lookup — all need a spatial view.
+A URL-embedded map is fragile (requires network, leaks provider choice).
+
+---
+
+### Dialogue group — visual accompaniment to an active voice dialogue
+
+OVOS is **voice-first**.  The GUI never drives an interaction on its own.
+These templates display what is currently being asked through speech so the
+user can follow along.  On capable devices a touch shortcut may be offered as
+a convenience, but:
+
+- Voice is always the primary (and on display-only devices, the only) path.
+- A skill must never block waiting for a GUI event — it must always be
+  listening for the spoken answer in parallel.
+- The display layer decides whether to render touch targets at all.
+
+| Template | Purpose | Key session data |
+|---|---|---|
+| `SYSTEM_confirm` | Shows the yes/no question being spoken | `question: str` |
+| `SYSTEM_select` | Shows the list of options being spoken | `prompt: str?`, `items: List[{label, value}]` |
+
+`SYSTEM_input` is **excluded** — free-text keyboard entry is not a voice-first
+interaction and cannot work on display-only devices.  Skills that need text
+input must use the speech layer.
+
+---
+
+### Avatar group — embodied assistant states
+
+| Template | Purpose | Key session data |
+|---|---|---|
+| `SYSTEM_face` | Animated avatar face | `sleeping: bool` |
+
+This template is intentionally minimal — the display layer decides what the
+avatar looks like.  Additional emotional states (thinking, listening) are a
+display-layer concern, not a session-data concern.
+
+---
+
+## Templates deliberately excluded
+
+| Rejected | Reason |
+|---|---|
+| `SYSTEM_slideshow` | Compose by showing `SYSTEM_image` pages at `index` |
+| `SYSTEM_notification` | This is a system-layer concept, not a page template |
+| `SYSTEM_qr_code` | Renderable as `SYSTEM_image`; generation belongs in the skill |
+| `SYSTEM_chart` / `SYSTEM_graph` | Too display-layer-specific; use `SYSTEM_html` or `SYSTEM_image` |
+| `SYSTEM_input` | Free-text keyboard entry breaks the voice-first contract and cannot work on display-only devices |
+| Per-skill templates (calendar, spotify, etc.) | Violates the "multiple unrelated skills" rule |
+
+---
+
+## Summary
+
+```
+SYSTEM_idle             (reserved)
+
+SYSTEM_loading
+SYSTEM_status
+SYSTEM_error
+
+SYSTEM_text
+SYSTEM_image
+SYSTEM_animated_image
+SYSTEM_list
+SYSTEM_grid
+SYSTEM_table
+
+SYSTEM_html
+SYSTEM_url
+
+SYSTEM_audio_player
+SYSTEM_video_player
+
+SYSTEM_clock
+SYSTEM_timer
+SYSTEM_weather
+SYSTEM_map
+
+SYSTEM_confirm
+SYSTEM_select
+
+SYSTEM_face
+```
+
+21 templates total.  Every one is justified by cross-skill usage and a data
+model that cannot be reduced to an existing template.
