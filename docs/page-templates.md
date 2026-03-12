@@ -23,8 +23,7 @@ class PageTemplates(str, enum.Enum):
     TABLE           = "SYSTEM_table"
     HTML            = "SYSTEM_html"
     URL             = "SYSTEM_url"
-    AUDIO_PLAYER    = "SYSTEM_audio_player"
-    VIDEO_PLAYER    = "SYSTEM_video_player"
+    MEDIA_PLAYER    = "SYSTEM_media_player"
     CLOCK           = "SYSTEM_clock"
     TIMER           = "SYSTEM_timer"
     WEATHER         = "SYSTEM_weather"
@@ -32,9 +31,6 @@ class PageTemplates(str, enum.Enum):
     CONFIRM         = "SYSTEM_confirm"
     SELECT          = "SYSTEM_select"
     FACE            = "SYSTEM_face"
-    OCP_NOW_PLAYING = "SYSTEM_ocp_now_playing"
-    OCP_SEARCH      = "SYSTEM_ocp_search"
-    OCP_PLAYLIST    = "SYSTEM_ocp_playlist"
 ```
 
 `IDLE` is reserved — the `ovos-gui` service manages it; skills must not
@@ -806,105 +802,6 @@ self.speak("Which temperature unit do you prefer? Celsius, Fahrenheit, or Kelvin
 gui.show_select(options, prompt="Choose a temperature unit")
 gui.register_handler("select.response", self.handle_unit_selection)
 ```
-
----
-
-## OCP media service group
-
-These three templates are used by the OVOS Common Play (OCP) service and
-OCP-aware skills. They carry richer media state than the generic
-`show_audio_player()` / `show_video_player()` methods.
-
-### `show_ocp_now_playing()`
-
-Displays the OCP now-playing view with full player state for any media type.
-
-```python
-def show_ocp_now_playing(
-    title: str,
-    artist: Optional[str] = None,
-    image: Optional[str] = None,
-    bg_image: Optional[str] = None,
-    uri: Optional[str] = None,
-    media_type: str = "audio",
-    position: float = 0.0,
-    duration: float = 0.0,
-    playing: bool = True,
-    can_prev: bool = True,
-    can_next: bool = True,
-    loop_status: str = "None",
-    shuffle: bool = False,
-    javascript: Optional[str] = None,
-    override_idle: Union[int, bool, None] = True,
-    override_animations: bool = False,
-) -> None
-```
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `title` | `str` | required | Track / page title |
-| `artist` | `str \| None` | `None` | Artist or channel name (audio) |
-| `image` | `str \| None` | `None` | Album-art URL or file path (audio) |
-| `bg_image` | `str \| None` | `None` | Background image URL or file path |
-| `uri` | `str \| None` | `None` | Stream URI (video / web; also carried for audio) |
-| `media_type` | `str` | `"audio"` | One of `"audio"`, `"video"`, `"web"` |
-| `position` | `float` | `0.0` | Current playback position in milliseconds |
-| `duration` | `float` | `0.0` | Total duration in milliseconds (0 = streaming) |
-| `playing` | `bool` | `True` | `True` if currently playing |
-| `can_prev` | `bool` | `True` | Whether skipping to previous track is available |
-| `can_next` | `bool` | `True` | Whether skipping to next track is available |
-| `loop_status` | `str` | `"None"` | One of `"None"`, `"RepeatTrack"`, `"Repeat"` |
-| `shuffle` | `bool` | `False` | Whether shuffle mode is active |
-| `javascript` | `str \| None` | `None` | JS snippet to inject after page load (web type only) |
-
-**Template:** `SYSTEM_ocp_now_playing`
-
----
-
-### `show_ocp_search()`
-
-Displays the OCP search-results view. Pass an empty `results` list to show
-the OCP browser / featured skills (home state).
-
-```python
-def show_ocp_search(
-    results: Optional[List[Dict]] = None,
-    search_term: Optional[str] = None,
-    skill_cards: Optional[List[Dict]] = None,
-    override_idle: Union[int, bool, None] = True,
-    override_animations: bool = False,
-) -> None
-```
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `results` | `List[dict] \| None` | `None` → `[]` | Ranked media candidates. Each entry needs at minimum `title`, `artist`, `image`, `duration` (ms), `source` (skill icon URL), `uri` |
-| `search_term` | `str \| None` | `None` → `""` | The query that produced these results |
-| `skill_cards` | `List[dict] \| None` | `None` → `[]` | Featured OCP skill cards for the home state. Each entry has `skill_id`, `title`, `image`, `media_type` |
-
-**Template:** `SYSTEM_ocp_search`
-
----
-
-### `show_ocp_playlist()`
-
-Displays the OCP playlist (ordered queue of tracks).
-
-```python
-def show_ocp_playlist(
-    tracks: Optional[List[Dict]] = None,
-    current_index: int = 0,
-    override_idle: Union[int, bool, None] = True,
-    override_animations: bool = False,
-) -> None
-```
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `tracks` | `List[dict] \| None` | `None` → `[]` | Ordered track list. Each entry needs at minimum `title`, `artist`, `image`, `duration` (ms) |
-| `current_index` | `int` | `0` | Index of the currently playing track (0-based) |
-
-**Template:** `SYSTEM_ocp_playlist`
 
 ---
 

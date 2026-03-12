@@ -1,9 +1,0 @@
-README.md
-pyproject.toml
-ovos_gui_api_client/__init__.py
-ovos_gui_api_client/version.py
-ovos_gui_api_client.egg-info/PKG-INFO
-ovos_gui_api_client.egg-info/SOURCES.txt
-ovos_gui_api_client.egg-info/dependency_links.txt
-ovos_gui_api_client.egg-info/requires.txt
-ovos_gui_api_client.egg-info/top_level.txt
