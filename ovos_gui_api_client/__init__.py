@@ -23,7 +23,9 @@ Typical usage inside a skill::
     # later …
     gui.release()
 """
+import base64
 import enum
+import mimetypes
 import os
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -32,7 +34,7 @@ from ovos_config import Configuration
 from ovos_utils.log import LOG
 
 from ovos_bus_client.message import Message
-from ovos_bus_client.util import get_mycroft_bus
+from ovos_bus_client.util import dig_for_message, get_mycroft_bus
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +70,16 @@ class PageTemplates(str, enum.Enum):
         CONFIRM:        Visual accompaniment to a yes/no voice dialogue.
         SELECT:         Visual accompaniment to a choice voice dialogue.
         FACE:           Avatar face (awake / sleeping states).
+
+        OCP_NOW_PLAYING: OCP now-playing view — full player state for any media type
+                         (audio, video, web).  GUI clients render transport controls,
+                         seek bar, and album art / video surface based on ``media_type``.
+        OCP_SEARCH:      OCP search-results view — a ranked list of media candidates
+                         returned by OCP skill search.  GUI clients render a browsable
+                         list; clicking an item should fire ``ovos.common_play.search.play``.
+        OCP_PLAYLIST:    OCP playlist view — the ordered queue of tracks to be played.
+                         GUI clients render a scrollable list; clicking an item should
+                         fire ``ovos.common_play.playlist.play``.
     """
     IDLE            = "SYSTEM_idle"
     LOADING         = "SYSTEM_loading"
@@ -83,6 +95,7 @@ class PageTemplates(str, enum.Enum):
     URL             = "SYSTEM_url"
     AUDIO_PLAYER    = "SYSTEM_audio_player"
     VIDEO_PLAYER    = "SYSTEM_video_player"
+    MEDIA_PLAYER    = "SYSTEM_media_player"
     CLOCK           = "SYSTEM_clock"
     TIMER           = "SYSTEM_timer"
     WEATHER         = "SYSTEM_weather"
@@ -90,6 +103,10 @@ class PageTemplates(str, enum.Enum):
     CONFIRM         = "SYSTEM_confirm"
     SELECT          = "SYSTEM_select"
     FACE            = "SYSTEM_face"
+    # --- OCP media service ---
+    OCP_NOW_PLAYING = "SYSTEM_ocp_now_playing"
+    OCP_SEARCH      = "SYSTEM_ocp_search"
+    OCP_PLAYLIST    = "SYSTEM_ocp_playlist"
 
 
 class FillMode(str, enum.Enum):
@@ -442,8 +459,10 @@ class GUIInterface:
             return
         if not self._bus:
             raise RuntimeError("Bus not set – call set_bus() or pass bus= to the constructor.")
+        msg = dig_for_message()
+        ctx = msg.context if msg else {}
         data = dict(self._session_data, __from=self.skill_id)
-        self._bus.emit(Message("gui.value.set", data))
+        self._bus.emit(Message("gui.value.set", data, ctx))
 
     # ------------------------------------------------------------------
     # Page management (internal)
@@ -513,6 +532,8 @@ class GUIInterface:
         # Sync data first so the page renders with the latest values.
         self._sync_data()
 
+        msg = dig_for_message()
+        ctx = msg.context if msg else {}
         self._bus.emit(
             Message(
                 "gui.page.show",
@@ -523,6 +544,7 @@ class GUIInterface:
                     "__idle": override_idle,
                     "__animations": override_animations,
                 },
+                ctx,
             )
         )
 
@@ -772,9 +794,14 @@ class GUIInterface:
             animated:            Set ``True`` to use the animated-image
                                  template (GIF / WebP).
         """
-        if not url.startswith(("http://", "https://")) and not os.path.isfile(url):
-            LOG.error(f"Image not found: '{url}'")
-            return
+        if not url.startswith(("http://", "https://", "data:")):
+            if not os.path.isfile(url):
+                LOG.error(f"Image not found: '{url}'")
+                return
+            mime, _ = mimetypes.guess_type(url)
+            mime = mime or "image/png"
+            with open(url, "rb") as f:
+                url = f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
 
         self["image"] = url
         self["title"] = title
@@ -1045,6 +1072,155 @@ class GUIInterface:
         self["title"] = title
         self["playing"] = playing
         self._show_page(PageTemplates.VIDEO_PLAYER, override_idle, override_animations)
+
+    def show_media_player(
+        self,
+        now_playing: Optional[Dict[str, Any]] = None,
+        playlist: Optional[List[Dict[str, Any]]] = None,
+        search_results: Optional[List[Dict[str, Any]]] = None,
+        state: str = "playing",
+        override_idle: Union[int, bool, None] = True,
+        override_animations: bool = False,
+    ) -> None:
+        """Display the OCP media player UI: now-playing metadata, playlist queue,
+        and search results in a single unified surface.
+
+        Args:
+            now_playing: Current track metadata dict with keys:
+                title, artist, album, image (URL or data: URI),
+                uri, position (ms), duration (ms; -1 for live streams).
+            playlist: Ordered queue. Each item: {title, artist, image, uri, duration}.
+            search_results: Search hits. Each item:
+                {title, artist, image, uri, skill_id, match_confidence}.
+            state: One of "playing", "paused", "stopped", "loading", "error".
+            override_idle: How long to keep the display (True=persistent, int=seconds).
+            override_animations: Skip transition animations if True.
+        """
+        np = now_playing or {}
+        self["ocp_title"] = np.get("title", "")
+        self["ocp_artist"] = np.get("artist", "")
+        self["ocp_album"] = np.get("album", "")
+        self["ocp_image"] = np.get("image", "")
+        self["ocp_uri"] = np.get("uri", "")
+        self["ocp_position"] = int(np.get("position", 0))
+        self["ocp_duration"] = int(np.get("duration", -1))
+        self["ocp_playback_state"] = state
+        self["ocp_playlist"] = playlist or []
+        self["ocp_search_results"] = search_results or []
+        # index of current track in playlist
+        uri = np.get("uri", "")
+        playlist_uris = [item.get("uri", "") for item in (playlist or [])]
+        self["ocp_playlist_position"] = playlist_uris.index(uri) if uri in playlist_uris else 0
+        self._show_page(PageTemplates.MEDIA_PLAYER, override_idle, override_animations)
+
+    # ------------------------------------------------------------------
+    # OCP media service templates
+    # ------------------------------------------------------------------
+
+    def show_ocp_now_playing(
+        self,
+        title: str,
+        artist: Optional[str] = None,
+        image: Optional[str] = None,
+        bg_image: Optional[str] = None,
+        uri: Optional[str] = None,
+        media_type: str = "audio",
+        position: float = 0.0,
+        duration: float = 0.0,
+        playing: bool = True,
+        can_prev: bool = True,
+        can_next: bool = True,
+        loop_status: str = "None",
+        shuffle: bool = False,
+        javascript: Optional[str] = None,
+        override_idle: Union[int, bool, None] = True,
+        override_animations: bool = False,
+    ) -> None:
+        """Display the OCP now-playing view.
+
+        This template carries the full player state for any OCP media type.
+        The GUI client is responsible for choosing how to render it —
+        e.g. album art + transport controls for audio, a video surface for
+        video, or a web engine for web streams.
+
+        Args:
+            title:        Track / page title.
+            artist:       Artist or channel name (audio).
+            image:        Album-art URL or file path (audio).
+            bg_image:     Background image URL or file path.
+            uri:          Stream URI (video / web; also carried for audio).
+            media_type:   ``"audio"``, ``"video"``, or ``"web"``.
+            position:     Current playback position in milliseconds.
+            duration:     Total duration in milliseconds (0 = streaming).
+            playing:      ``True`` if currently playing.
+            can_prev:     Whether skipping to the previous track is available.
+            can_next:     Whether skipping to the next track is available.
+            loop_status:  One of ``"None"``, ``"RepeatTrack"``, ``"Repeat"``.
+            shuffle:      Whether shuffle mode is active.
+            javascript:   JS snippet to inject after page load (web only).
+        """
+        self["title"]       = title
+        self["artist"]      = artist
+        self["image"]       = image
+        self["bg_image"]    = bg_image
+        self["uri"]         = uri
+        self["media_type"]  = media_type
+        self["position"]    = position
+        self["duration"]    = duration
+        self["playing"]     = playing
+        self["can_prev"]    = can_prev
+        self["can_next"]    = can_next
+        self["loop_status"] = loop_status
+        self["shuffle"]     = shuffle
+        self["javascript"]  = javascript
+        self._show_page(PageTemplates.OCP_NOW_PLAYING, override_idle, override_animations)
+
+    def show_ocp_search(
+        self,
+        results: Optional[List[Dict]] = None,
+        search_term: Optional[str] = None,
+        skill_cards: Optional[List[Dict]] = None,
+        override_idle: Union[int, bool, None] = True,
+        override_animations: bool = False,
+    ) -> None:
+        """Display the OCP search-results view.
+
+        Pass an empty ``results`` list to show the OCP browser / featured
+        skills (home state).
+
+        Args:
+            results:      Ranked list of media candidates.  Each entry is a
+                          dict with at minimum ``title``, ``artist``, ``image``,
+                          ``duration`` (ms), ``source`` (skill icon URL), and
+                          ``uri``.
+            search_term:  The query that produced these results (for display).
+            skill_cards:  Featured OCP skill cards shown when ``results`` is
+                          empty (home state).  Each entry has ``skill_id``,
+                          ``title``, ``image``, and ``media_type``.
+        """
+        self["results"]     = results     or []
+        self["search_term"] = search_term or ""
+        self["skill_cards"] = skill_cards or []
+        self._show_page(PageTemplates.OCP_SEARCH, override_idle, override_animations)
+
+    def show_ocp_playlist(
+        self,
+        tracks: Optional[List[Dict]] = None,
+        current_index: int = 0,
+        override_idle: Union[int, bool, None] = True,
+        override_animations: bool = False,
+    ) -> None:
+        """Display the OCP playlist view.
+
+        Args:
+            tracks:        Ordered list of track dicts, each with at minimum
+                           ``title``, ``artist``, ``image``, ``duration`` (ms).
+            current_index: Index of the currently playing track (0-based).
+        """
+        self["tracks"]        = tracks or []
+        self["current_index"] = current_index
+        self._show_page(PageTemplates.OCP_PLAYLIST, override_idle, override_animations)
+
 
     def show_clock(
         self,
