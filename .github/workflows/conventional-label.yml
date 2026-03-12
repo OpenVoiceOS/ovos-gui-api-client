@@ -9,4 +9,4 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: bcoe/conventional-release-labels@886f696738527c7be444262c327c89436dfb95a8
+      - uses: bcoe/conventional-release-labels@v1
