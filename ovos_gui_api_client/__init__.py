@@ -267,6 +267,17 @@ class GUIInterface:
     def bus(self, val) -> None:
         self.set_bus(val)
 
+    @property
+    def connected(self) -> bool:
+        """``True`` when at least one GUI client is connected to the bus.
+
+        This is a convenience wrapper around :func:`ovos_utils.gui.can_use_gui`.
+        """
+        from ovos_utils.gui import can_use_gui
+        if not self._bus:
+            return False
+        return can_use_gui(self._bus)
+
     # ------------------------------------------------------------------
     # Identity
     # ------------------------------------------------------------------

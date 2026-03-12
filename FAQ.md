@@ -10,7 +10,7 @@ pip install ovos-gui-api-client
 ```
 Or for development:
 ```bash
-uv pip install -e ovos-gui-api-client/
+uv pip install -e .
 ```
 
 ## Where do I report bugs?
@@ -18,7 +18,7 @@ Open an issue on the GitHub repository. Ensure you are targeting the `dev` branc
 
 ## How do I run tests?
 ```bash
-uv run pytest ovos-gui-api-client/test/ --cov=ovos_gui_api_client
+uv run pytest test/ --cov=ovos_gui_api_client
 ```
 
 ## How do I contribute?

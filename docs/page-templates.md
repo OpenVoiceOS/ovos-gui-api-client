@@ -449,21 +449,16 @@ gui.show_table(
 
 ## Media group
 
-### `show_audio_player()`
+### `show_media_player()`
 
-Displays a now-playing card for audio playback. The actual audio is
-managed by the audio service; this call only updates the visual layer.
-Call again on track changes or pause/resume to keep the display in sync.
+The unified media player surface that handles audio, video, and OCP media. This is the recommended method for all media playback UI.
 
 ```python
-def show_audio_player(
-    title: str,
-    artist: Optional[str] = None,
-    album: Optional[str] = None,
-    image: Optional[str] = None,
-    position: float = 0.0,
-    duration: float = 0.0,
-    playing: bool = True,
+def show_media_player(
+    now_playing: Optional[Dict[str, Any]] = None,
+    playlist: Optional[List[Dict[str, Any]]] = None,
+    search_results: Optional[List[Dict[str, Any]]] = None,
+    state: str = "playing",
     override_idle: Union[int, bool, None] = True,
     override_animations: bool = False,
 ) -> None
@@ -471,67 +466,31 @@ def show_audio_player(
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `title` | `str` | required | Track title |
-| `artist` | `str \| None` | `None` | Artist name |
-| `album` | `str \| None` | `None` | Album name |
-| `image` | `str \| None` | `None` | URL or path to album art |
-| `position` | `float` | `0.0` | Current playback position in seconds |
-| `duration` | `float` | `0.0` | Total track duration in seconds; `0` = unknown / streaming |
-| `playing` | `bool` | `True` | `True` if currently playing, `False` if paused |
+| `now_playing` | `dict \| None` | `None` | Current track metadata: title, artist, album, image, uri, position (ms), duration (ms) |
+| `playlist` | `list[dict] \| None` | `None` | Ordered queue of tracks |
+| `search_results` | `list[dict] \| None` | `None` | Search results for OCP |
+| `state` | `str` | `"playing"` | One of: "playing", "paused", "stopped", "loading", "error" |
 
-`override_idle` defaults to `True` (hold display while playing).
+**Session data set:** `ocp_title`, `ocp_artist`, `ocp_album`, `ocp_image`, `ocp_uri`, `ocp_position`, `ocp_duration`, `ocp_playback_state`, `ocp_playlist`, `ocp_search_results`, `ocp_playlist_position`
 
-**Session data set:** `title`, `artist`, `album`, `image`, `position`, `duration`, `playing`
-
-**Template:** `SYSTEM_audio_player`
+**Template:** `SYSTEM_media_player`
 
 **Example:**
 ```python
-gui.show_audio_player(
-    title="Comfortably Numb",
-    artist="Pink Floyd",
-    album="The Wall",
-    image="https://example.com/wall.jpg",
-    position=45.2,
-    duration=382.0,
-    playing=True,
-)
-```
-
----
-
-### `show_video_player()`
-
-Displays an embedded video playback surface. Unlike `show_audio_player`,
-the display layer is responsible for rendering the video stream.
-
-```python
-def show_video_player(
-    uri: str,
-    title: Optional[str] = None,
-    playing: bool = True,
-    override_idle: Union[int, bool, None] = True,
-    override_animations: bool = False,
-) -> None
-```
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `uri` | `str` | required | URI of the video stream or file to play |
-| `title` | `str \| None` | `None` | Optional title overlay |
-| `playing` | `bool` | `True` | `True` to start playing immediately |
-
-`override_idle` defaults to `True`.
-
-**Session data set:** `uri`, `title`, `playing`
-
-**Template:** `SYSTEM_video_player`
-
-**Example:**
-```python
-gui.show_video_player(
-    uri="https://example.com/news.mp4",
-    title="Evening news",
+gui.show_media_player(
+    now_playing={
+        "title": "Comfortably Numb",
+        "artist": "Pink Floyd",
+        "album": "The Wall",
+        "image": "https://example.com/wall.jpg",
+        "uri": "spotify:track:123",
+        "position": 45200,
+        "duration": 382000,
+    },
+    playlist=[
+        {"title": "Another Brick in the Wall", "artist": "Pink Floyd", "uri": "spotify:track:456"},
+    ],
+    state="playing",
 )
 ```
 

@@ -35,7 +35,7 @@ skills that use `self.gui` continue to work without code changes.
 
 ## Architecture position
 
-```
+```text
 Skill code
   └─ GUIInterface (this package)
        ├─ gui.value.set  →  ovos-gui / NamespaceManager
@@ -134,17 +134,12 @@ full in [`page-templates.md`](page-templates.md).
 | `show_list()` | `SYSTEM_list` |
 | `show_grid()` | `SYSTEM_grid` |
 | `show_table()` | `SYSTEM_table` |
-| `show_audio_player()` | `SYSTEM_audio_player` |
-| `show_video_player()` | `SYSTEM_video_player` |
 | `show_media_player()` | `SYSTEM_media_player` |
 | `show_clock()` | `SYSTEM_clock` |
 | `show_timer()` | `SYSTEM_timer` |
 | `show_map()` | `SYSTEM_map` |
 | `show_confirm()` | `SYSTEM_confirm` |
 | `show_select()` | `SYSTEM_select` |
-| `show_ocp_now_playing()` | `SYSTEM_ocp_now_playing` |
-| `show_ocp_search()` | `SYSTEM_ocp_search` |
-| `show_ocp_playlist()` | `SYSTEM_ocp_playlist` |
 
 ### `GUIInterface` — lifecycle
 

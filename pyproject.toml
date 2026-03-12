@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ovos-gui-api-client"
 dynamic = ["version"]
-description = "Template-based GUI interface for OpenVoiceOS skills"
+description = "Template-based GUI for OpenVoiceOS skills"
 readme = "README.md"
 license = "apache-2.0"
 authors = [{name = "OpenVoiceOS", email = "jarbasai@mailfence.com"}]
@@ -14,6 +14,11 @@ dependencies = [
     "ovos-utils>=0.7.0,<1.0.0",
     "ovos-bus-client>=1.3.8a1,<2.0.0",
     "ovos-config>=0.0.12,<3.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
 ]
 
 [project.urls]

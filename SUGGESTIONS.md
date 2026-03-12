@@ -4,7 +4,7 @@
 > This file tracks proposed improvements for human developers. Each entry includes
 > the problem/opportunity, proposed solution, and estimated impact.
 
-### 1. Add type hints to public API
+## 1. Add type hints to public API
 
 **Problem/Opportunity**: Functions and classes may lack full type annotations,
 reducing IDE support and making the codebase harder to audit.
@@ -14,7 +14,7 @@ type hints. Run `mypy` to verify.
 
 **Estimated Impact**: Low effort, high long-term benefit for maintainability.
 
-### 2. Expand unit test coverage
+## 2. Expand unit test coverage
 
 **Problem/Opportunity**: Test coverage may be incomplete, leading to undetected
 regressions during refactors or dependency upgrades.
@@ -24,7 +24,7 @@ uncovered edge cases, especially around plugin loading and error paths.
 
 **Estimated Impact**: Medium — reduces regression risk significantly.
 
-### 3. Enrich this `SUGGESTIONS.md`
+## 3. Enrich this `SUGGESTIONS.md`
 
 **Problem/Opportunity**: This file was auto-generated and contains only generic
 suggestions.

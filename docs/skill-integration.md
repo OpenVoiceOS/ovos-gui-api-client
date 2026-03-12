@@ -140,8 +140,8 @@ Every `show_*` method accepts `override_idle`:
 | `int` | Hold for that many seconds, then return to idle |
 
 Some methods default to `True` (e.g. `show_clock()`, `show_timer()`,
-`show_audio_player()`, `show_video_player()`) because those views are
-meant to remain on screen until explicitly dismissed.
+`show_media_player()`) because those views are meant to remain on screen
+until explicitly dismissed.
 
 ---
 

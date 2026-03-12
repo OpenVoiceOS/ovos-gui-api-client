@@ -14,4 +14,4 @@ jobs:
       coverage_source: 'ovos_gui_api_client'
       test_path: 'test/'
       install_extras: ''
-      min_coverage: 0
+      min_coverage: 70
