@@ -260,35 +260,6 @@ class TestShowTable:
             gui_interface.show_table(columns, rows)
 
 
-class TestShowAudioPlayer:
-    def test_show_audio_player(self, gui_interface):
-        gui_interface.show_audio_player(
-            title="Song Title",
-            artist="Artist Name",
-            album="Album Name",
-            image="cover.jpg",
-            position=30.0,
-            duration=180.0,
-            playing=True,
-        )
-        assert gui_interface["title"] == "Song Title"
-        assert gui_interface["artist"] == "Artist Name"
-        assert gui_interface["album"] == "Album Name"
-        assert gui_interface["position"] == 30.0
-        assert gui_interface["duration"] == 180.0
-        assert gui_interface["playing"] is True
-
-
-class TestShowVideoPlayer:
-    def test_show_video_player(self, gui_interface):
-        gui_interface.show_video_player(
-            uri="https://example.com/video.mp4", title="Video Title", playing=True
-        )
-        assert gui_interface["uri"] == "https://example.com/video.mp4"
-        assert gui_interface["title"] == "Video Title"
-        assert gui_interface["playing"] is True
-
-
 class TestShowMediaPlayer:
     def test_show_media_player_minimal(self, gui_interface):
         gui_interface.show_media_player()
@@ -426,35 +397,3 @@ class TestPageProperty:
     def test_pages_property(self, gui_interface):
         gui_interface._pages = [PageTemplates.TEXT, PageTemplates.IMAGE]
         assert gui_interface.pages == [PageTemplates.TEXT, PageTemplates.IMAGE]
-
-
-class TestOCPTemplates:
-    def test_show_ocp_now_playing(self, gui_interface):
-        gui_interface.show_ocp_now_playing(
-            title="Track",
-            artist="Artist",
-            image="cover.jpg",
-            uri="spotify:track:123",
-            media_type="audio",
-            position=30000,
-            duration=180000,
-            playing=True,
-        )
-        assert gui_interface["title"] == "Track"
-        assert gui_interface["media_type"] == "audio"
-        assert gui_interface["playing"] is True
-
-    def test_show_ocp_search(self, gui_interface):
-        results = [{"title": "Result 1", "uri": "r:1"}]
-        gui_interface.show_ocp_search(results=results, search_term="test")
-        assert gui_interface["results"] == results
-        assert gui_interface["search_term"] == "test"
-
-    def test_show_ocp_playlist(self, gui_interface):
-        tracks = [
-            {"title": "Track 1", "uri": "t:1"},
-            {"title": "Track 2", "uri": "t:2"},
-        ]
-        gui_interface.show_ocp_playlist(tracks=tracks, current_index=1)
-        assert gui_interface["tracks"] == tracks
-        assert gui_interface["current_index"] == 1
