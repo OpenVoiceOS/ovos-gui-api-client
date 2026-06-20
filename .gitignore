@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+.coverage
+htmlcov/
+uv.lock
+AGENTS.md
+TODO.md
+.claude/
