@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.0a1](https://github.com/OpenVoiceOS/ovos-gui-api-client/tree/0.1.0a1) (2026-06-25)
+
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-gui-api-client/compare/0.0.2a1...0.1.0a1)
+
+**Merged pull requests:**
+
+- feat: add EnclosureAPI \(self.gui + self.enclosure from one client\) [\#4](https://github.com/OpenVoiceOS/ovos-gui-api-client/pull/4) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.0.2a1](https://github.com/OpenVoiceOS/ovos-gui-api-client/tree/0.0.2a1) (2026-06-20)
 
 [Full Changelog](https://github.com/OpenVoiceOS/ovos-gui-api-client/compare/50612e88a9b013ae805688d2e88db7c589aa1723...0.0.2a1)
