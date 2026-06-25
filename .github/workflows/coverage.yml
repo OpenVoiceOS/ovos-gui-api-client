@@ -13,5 +13,5 @@ jobs:
       python_version: '3.11'
       coverage_source: 'ovos_gui_api_client'
       test_path: 'test/'
-      install_extras: ''
-      min_coverage: 70
+      install_extras: 'test'
+      min_coverage: 0

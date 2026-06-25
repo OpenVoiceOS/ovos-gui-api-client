@@ -11,4 +11,4 @@ jobs:
     secrets: inherit
     with:
       ruff: true
-      pre_commit: false   # set true if .pre-commit-config.yaml exists
+      pre_commit: false
