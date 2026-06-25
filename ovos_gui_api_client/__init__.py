@@ -23,7 +23,9 @@ Typical usage inside a skill::
     # later …
     gui.release()
 """
+import base64
 import enum
+import mimetypes
 import os
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -32,7 +34,11 @@ from ovos_config import Configuration
 from ovos_utils.log import LOG
 
 from ovos_bus_client.message import Message
-from ovos_bus_client.util import get_mycroft_bus
+from ovos_bus_client.util import dig_for_message, get_mycroft_bus
+
+# EnclosureAPI is the producer side of the legacy hardware-enclosure protocol;
+# exposed here so a skill's self.gui and self.enclosure come from one package.
+from ovos_gui_api_client.enclosure import EnclosureAPI
 
 
 # ---------------------------------------------------------------------------
@@ -59,8 +65,6 @@ class PageTemplates(str, enum.Enum):
         TABLE:          Columnar data table with named headers.
         HTML:           In-process HTML renderer.
         URL:            Full web-page renderer.
-        AUDIO_PLAYER:   Now-playing card for audio playback.
-        VIDEO_PLAYER:   Embedded video playback surface.
         CLOCK:          Clock / time display (self-updating).
         TIMER:          Countdown / count-up display (self-updating).
         WEATHER:        Weather summary card.
@@ -81,8 +85,7 @@ class PageTemplates(str, enum.Enum):
     TABLE           = "SYSTEM_table"
     HTML            = "SYSTEM_html"
     URL             = "SYSTEM_url"
-    AUDIO_PLAYER    = "SYSTEM_audio_player"
-    VIDEO_PLAYER    = "SYSTEM_video_player"
+    MEDIA_PLAYER    = "SYSTEM_media_player"
     CLOCK           = "SYSTEM_clock"
     TIMER           = "SYSTEM_timer"
     WEATHER         = "SYSTEM_weather"
@@ -442,8 +445,10 @@ class GUIInterface:
             return
         if not self._bus:
             raise RuntimeError("Bus not set – call set_bus() or pass bus= to the constructor.")
+        msg = dig_for_message()
+        ctx = msg.context if msg else {}
         data = dict(self._session_data, __from=self.skill_id)
-        self._bus.emit(Message("gui.value.set", data))
+        self._bus.emit(Message("gui.value.set", data, ctx))
 
     # ------------------------------------------------------------------
     # Page management (internal)
@@ -513,6 +518,8 @@ class GUIInterface:
         # Sync data first so the page renders with the latest values.
         self._sync_data()
 
+        msg = dig_for_message()
+        ctx = msg.context if msg else {}
         self._bus.emit(
             Message(
                 "gui.page.show",
@@ -523,6 +530,7 @@ class GUIInterface:
                     "__idle": override_idle,
                     "__animations": override_animations,
                 },
+                ctx,
             )
         )
 
@@ -772,9 +780,14 @@ class GUIInterface:
             animated:            Set ``True`` to use the animated-image
                                  template (GIF / WebP).
         """
-        if not url.startswith(("http://", "https://")) and not os.path.isfile(url):
-            LOG.error(f"Image not found: '{url}'")
-            return
+        if not url.startswith(("http://", "https://", "data:")):
+            if not os.path.isfile(url):
+                LOG.error(f"Image not found: '{url}'")
+                return
+            mime, _ = mimetypes.guess_type(url)
+            mime = mime or "image/png"
+            with open(url, "rb") as f:
+                url = f"data:{mime};base64,{base64.b64encode(f.read()).decode()}"
 
         self["image"] = url
         self["title"] = title
@@ -976,75 +989,45 @@ class GUIInterface:
         self["rows"] = rows
         self._show_page(PageTemplates.TABLE, override_idle, override_animations)
 
-    def show_audio_player(
+    def show_media_player(
         self,
-        title: str,
-        artist: Optional[str] = None,
-        album: Optional[str] = None,
-        image: Optional[str] = None,
-        position: float = 0.0,
-        duration: float = 0.0,
-        playing: bool = True,
+        now_playing: Optional[Dict[str, Any]] = None,
+        playlist: Optional[List[Dict[str, Any]]] = None,
+        search_results: Optional[List[Dict[str, Any]]] = None,
+        state: str = "playing",
         override_idle: Union[int, bool, None] = True,
         override_animations: bool = False,
     ) -> None:
-        """Display a now-playing card for audio playback.
-
-        This template shows track metadata.  The actual audio is managed by
-        the audio service; this call only updates the visual layer.
-
-        Call this method again whenever playback state changes (e.g. track
-        changes, pause/resume) to keep the display in sync.
+        """Display the OCP media player UI: now-playing metadata, playlist queue,
+        and search results in a single unified surface.
 
         Args:
-            title:               Track title.
-            artist:              Artist name.
-            album:               Album name.
-            image:               URL or path to album art.
-            position:            Current playback position in seconds.
-            duration:            Total track duration in seconds.
-                                 ``0`` means unknown / streaming.
-            playing:             ``True`` if currently playing,
-                                 ``False`` if paused.
-            override_idle:       Idle override (see :meth:`_show_pages`).
-                                 Defaults to ``True`` (hold while playing).
-            override_animations: Animation override (see :meth:`_show_pages`).
+            now_playing: Current track metadata dict with keys:
+                title, artist, album, image (URL or data: URI),
+                uri, position (ms), duration (ms; -1 for live streams).
+            playlist: Ordered queue. Each item: {title, artist, image, uri, duration}.
+            search_results: Search hits. Each item:
+                {title, artist, image, uri, skill_id, match_confidence}.
+            state: One of "playing", "paused", "stopped", "loading", "error".
+            override_idle: How long to keep the display (True=persistent, int=seconds).
+            override_animations: Skip transition animations if True.
         """
-        self["title"] = title
-        self["artist"] = artist
-        self["album"] = album
-        self["image"] = image
-        self["position"] = position
-        self["duration"] = duration
-        self["playing"] = playing
-        self._show_page(PageTemplates.AUDIO_PLAYER, override_idle, override_animations)
-
-    def show_video_player(
-        self,
-        uri: str,
-        title: Optional[str] = None,
-        playing: bool = True,
-        override_idle: Union[int, bool, None] = True,
-        override_animations: bool = False,
-    ) -> None:
-        """Display an embedded video playback surface.
-
-        Unlike :meth:`show_audio_player`, the display layer is responsible
-        for rendering the video stream itself.
-
-        Args:
-            uri:                 URI of the video stream or file to play.
-            title:               Optional title overlay.
-            playing:             ``True`` to start playing immediately,
-                                 ``False`` to start paused.
-            override_idle:       Idle override (see :meth:`_show_pages`).
-                                 Defaults to ``True`` (hold while playing).
-            override_animations: Animation override (see :meth:`_show_pages`).
-        """
-        self["uri"] = uri
-        self["title"] = title
-        self["playing"] = playing
-        self._show_page(PageTemplates.VIDEO_PLAYER, override_idle, override_animations)
+        np = now_playing or {}
+        self["ocp_title"] = np.get("title", "")
+        self["ocp_artist"] = np.get("artist", "")
+        self["ocp_album"] = np.get("album", "")
+        self["ocp_image"] = np.get("image", "")
+        self["ocp_uri"] = np.get("uri", "")
+        self["ocp_position"] = int(np.get("position", 0))
+        self["ocp_duration"] = int(np.get("duration", -1))
+        self["ocp_playback_state"] = state
+        self["ocp_playlist"] = playlist or []
+        self["ocp_search_results"] = search_results or []
+        # index of current track in playlist
+        uri = np.get("uri", "")
+        playlist_uris = [item.get("uri", "") for item in (playlist or [])]
+        self["ocp_playlist_position"] = playlist_uris.index(uri) if uri in playlist_uris else 0
+        self._show_page(PageTemplates.MEDIA_PLAYER, override_idle, override_animations)
 
     def show_clock(
         self,
