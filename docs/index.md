@@ -197,3 +197,19 @@ full in [`page-templates.md`](page-templates.md).
 |---|---|
 | [`page-templates.md`](page-templates.md) | All 25 template methods with full parameter tables |
 | [`skill-integration.md`](skill-integration.md) | How skills import and use `GUIInterface` |
+
+## EnclosureAPI
+
+`EnclosureAPI` is exported alongside `GUIInterface` so a skill obtains both
+`self.gui` and `self.enclosure` from this one package. It is the producer side
+of the legacy hardware-enclosure protocol (the `enclosure.*` bus messages —
+eyes, mouth/faceplate, system LEDs); hardware GUI adapters consume it, the
+Mark-1 enclosure being the reference renderer.
+
+```python
+from ovos_gui_api_client import GUIInterface, EnclosureAPI
+
+gui = GUIInterface("my.skill", bus=bus)
+enclosure = EnclosureAPI(bus=bus, skill_id="my.skill")
+enclosure.eyes_color(0, 255, 0)
+```

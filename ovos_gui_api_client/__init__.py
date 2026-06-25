@@ -36,6 +36,10 @@ from ovos_utils.log import LOG
 from ovos_bus_client.message import Message
 from ovos_bus_client.util import dig_for_message, get_mycroft_bus
 
+# EnclosureAPI is the producer side of the legacy hardware-enclosure protocol;
+# exposed here so a skill's self.gui and self.enclosure come from one package.
+from ovos_gui_api_client.enclosure import EnclosureAPI
+
 
 # ---------------------------------------------------------------------------
 # Page template registry
