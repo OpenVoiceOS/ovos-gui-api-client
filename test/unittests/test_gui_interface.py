@@ -69,8 +69,7 @@ class TestPageTemplates(unittest.TestCase):
         "TABLE": "SYSTEM_table",
         "HTML": "SYSTEM_html",
         "URL": "SYSTEM_url",
-        "AUDIO_PLAYER": "SYSTEM_audio_player",
-        "VIDEO_PLAYER": "SYSTEM_video_player",
+        "MEDIA_PLAYER": "SYSTEM_media_player",
         "CLOCK": "SYSTEM_clock",
         "TIMER": "SYSTEM_timer",
         "WEATHER": "SYSTEM_weather",
@@ -93,7 +92,7 @@ class TestPageTemplates(unittest.TestCase):
             self.assertTrue(member.value.startswith("SYSTEM_"))
 
     def test_count(self):
-        self.assertEqual(len(list(PageTemplates)), 21)
+        self.assertEqual(len(list(PageTemplates)), 20)
 
     def test_is_str_enum(self):
         self.assertEqual(PageTemplates.TEXT, "SYSTEM_text")
@@ -255,27 +254,27 @@ class TestShowMethods(unittest.TestCase, ShowMixin):
         with self.assertRaises(ValueError):
             gui.show_table(["A", "B"], [[1]])
 
-    def test_show_audio_player(self):
+    def test_show_media_player(self):
         gui, bus = make_gui()
-        gui.show_audio_player("Song", artist="Artist", album="Album",
-                              image="art", position=1.0, duration=200.0,
-                              playing=True)
-        self.assertEqual(gui["title"], "Song")
-        self.assertEqual(gui["artist"], "Artist")
-        self.assertEqual(gui["album"], "Album")
-        self.assertEqual(gui["image"], "art")
-        self.assertEqual(gui["position"], 1.0)
-        self.assertEqual(gui["duration"], 200.0)
-        self.assertEqual(gui["playing"], True)
-        self.assert_page(bus, PageTemplates.AUDIO_PLAYER)
-
-    def test_show_video_player(self):
-        gui, bus = make_gui()
-        gui.show_video_player("file:///v.mp4", title="Clip", playing=False)
-        self.assertEqual(gui["uri"], "file:///v.mp4")
-        self.assertEqual(gui["title"], "Clip")
-        self.assertEqual(gui["playing"], False)
-        self.assert_page(bus, PageTemplates.VIDEO_PLAYER)
+        gui.show_media_player(
+            now_playing={"title": "Song", "artist": "Artist", "album": "Album",
+                         "image": "art", "uri": "file:///s.mp3",
+                         "position": 1, "duration": 200},
+            playlist=[{"title": "Song", "uri": "file:///s.mp3"},
+                      {"title": "Next", "uri": "file:///n.mp3"}],
+            search_results=[{"title": "Hit", "uri": "file:///h.mp3"}],
+            state="playing",
+        )
+        self.assertEqual(gui["ocp_title"], "Song")
+        self.assertEqual(gui["ocp_artist"], "Artist")
+        self.assertEqual(gui["ocp_album"], "Album")
+        self.assertEqual(gui["ocp_image"], "art")
+        self.assertEqual(gui["ocp_uri"], "file:///s.mp3")
+        self.assertEqual(gui["ocp_position"], 1)
+        self.assertEqual(gui["ocp_duration"], 200)
+        self.assertEqual(gui["ocp_playback_state"], "playing")
+        self.assertEqual(gui["ocp_playlist_position"], 0)
+        self.assert_page(bus, PageTemplates.MEDIA_PLAYER)
 
     def test_show_clock(self):
         gui, bus = make_gui()
@@ -331,8 +330,8 @@ class TestShowMethods(unittest.TestCase, ShowMixin):
             (PageTemplates.TABLE, lambda g: g.show_table(["A"], [[1]])),
             (PageTemplates.HTML, lambda g: g.show_html("<b/>")),
             (PageTemplates.URL, lambda g: g.show_url("https://e")),
-            (PageTemplates.AUDIO_PLAYER, lambda g: g.show_audio_player("s")),
-            (PageTemplates.VIDEO_PLAYER, lambda g: g.show_video_player("u")),
+            (PageTemplates.MEDIA_PLAYER,
+             lambda g: g.show_media_player(now_playing={"title": "s"})),
             (PageTemplates.CLOCK, lambda g: g.show_clock()),
             (PageTemplates.TIMER, lambda g: g.show_timer(time.time())),
             (PageTemplates.WEATHER,
