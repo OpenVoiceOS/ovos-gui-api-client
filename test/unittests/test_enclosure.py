@@ -88,3 +88,11 @@ class TestEnclosureAPI(TestCase):
         self.api.set_id("other.skill")
         self.api.reset()
         self.assertEqual(new_bus.emit.call_args[0][0].msg_type, "enclosure.reset")
+
+
+class TestEnclosureDestinationIsString(TestCase):
+    def test_source_message_destination_is_a_string(self):
+        # OVOS-MSG-1 §3.3: destination is a string, with no list form.
+        api = EnclosureAPI(bus=MagicMock(), skill_id="t.skill")
+        msg = api._get_source_message()
+        self.assertEqual(msg.context["destination"], "enclosure")
