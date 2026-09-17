@@ -1,20 +1,12 @@
 # Changelog
 
-## [0.1.0a1](https://github.com/OpenVoiceOS/ovos-gui-api-client/tree/0.1.0a1) (2026-06-25)
+## [0.1.1a1](https://github.com/OpenVoiceOS/ovos-gui-api-client/tree/0.1.1a1) (2026-09-17)
 
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-gui-api-client/compare/0.0.2a1...0.1.0a1)
-
-**Merged pull requests:**
-
-- feat: add EnclosureAPI \(self.gui + self.enclosure from one client\) [\#4](https://github.com/OpenVoiceOS/ovos-gui-api-client/pull/4) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.0.2a1](https://github.com/OpenVoiceOS/ovos-gui-api-client/tree/0.0.2a1) (2026-06-20)
-
-[Full Changelog](https://github.com/OpenVoiceOS/ovos-gui-api-client/compare/50612e88a9b013ae805688d2e88db7c589aa1723...0.0.2a1)
+[Full Changelog](https://github.com/OpenVoiceOS/ovos-gui-api-client/compare/0.1.0...0.1.1a1)
 
 **Merged pull requests:**
 
-- feat: package the client API \(pyproject + tests + CI\) [\#2](https://github.com/OpenVoiceOS/ovos-gui-api-client/pull/2) ([JarbasAl](https://github.com/JarbasAl))
+- fix: emit destination as a string \(OVOS-MSG-1 §3.3\) [\#7](https://github.com/OpenVoiceOS/ovos-gui-api-client/pull/7) ([openvoiceos-bot](https://github.com/openvoiceos-bot))
 
 
 
